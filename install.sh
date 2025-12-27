@@ -27,6 +27,8 @@ elif [[ -f /etc/debian_version ]]; then
     OS="debian"
 elif [[ -f /etc/redhat-release ]]; then
     OS="redhat"
+elif [[ -f /etc/arch-release ]]; then
+    OS="arch"
 else
     OS="unknown"
 fi
@@ -37,16 +39,32 @@ print_step "Detected OS: $OS"
 print_step "Installing dependencies..."
 
 if [[ "$OS" == "macos" ]]; then
+    # Install Homebrew if not present
     if ! command -v brew &> /dev/null; then
         print_step "Installing Homebrew..."
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+        # Add brew to PATH for Apple Silicon
+        if [[ -f "/opt/homebrew/bin/brew" ]]; then
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        fi
     fi
-    brew install neovim tmux git curl unzip ripgrep fd node npm python3 go 2>/dev/null || true
+
+    print_step "Installing packages via Homebrew..."
+    brew install neovim tmux git curl ripgrep fd node python3 go 2>/dev/null || true
+
 elif [[ "$OS" == "debian" ]]; then
+    print_step "Installing packages via apt..."
     sudo apt-get update
-    sudo apt-get install -y neovim tmux git curl unzip ripgrep fd-find nodejs npm python3 python3-pip golang-go xclip 2>/dev/null || true
+    sudo apt-get install -y neovim tmux git curl unzip ripgrep fd-find nodejs npm python3 python3-pip golang-go xclip fontconfig 2>/dev/null || true
+
 elif [[ "$OS" == "redhat" ]]; then
-    sudo dnf install -y neovim tmux git curl unzip ripgrep fd-find nodejs npm python3 python3-pip golang xclip 2>/dev/null || true
+    print_step "Installing packages via dnf..."
+    sudo dnf install -y neovim tmux git curl unzip ripgrep fd-find nodejs npm python3 python3-pip golang xclip fontconfig 2>/dev/null || true
+
+elif [[ "$OS" == "arch" ]]; then
+    print_step "Installing packages via pacman..."
+    sudo pacman -Syu --noconfirm neovim tmux git curl unzip ripgrep fd nodejs npm python python-pip go xclip fontconfig 2>/dev/null || true
 fi
 
 print_success "Dependencies installed"
@@ -107,15 +125,26 @@ fi
 
 # Install Nerd Font
 print_step "Installing JetBrainsMono Nerd Font..."
-mkdir -p "$HOME/.local/share/fonts"
-cd "$HOME/.local/share/fonts"
-if [[ ! -d "JetBrainsMono" ]]; then
+
+if [[ "$OS" == "macos" ]]; then
+    FONT_DIR="$HOME/Library/Fonts"
+else
+    FONT_DIR="$HOME/.local/share/fonts"
+fi
+
+mkdir -p "$FONT_DIR"
+
+if [[ ! -f "$FONT_DIR/JetBrainsMonoNerdFont-Regular.ttf" ]] && [[ ! -d "$FONT_DIR/JetBrainsMono" ]]; then
+    cd "$FONT_DIR"
     curl -fsSLO https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/JetBrainsMono.zip
-    unzip -o JetBrainsMono.zip -d JetBrainsMono >/dev/null 2>&1
+    unzip -o JetBrainsMono.zip -d JetBrainsMono >/dev/null 2>&1 || unzip -o JetBrainsMono.zip >/dev/null 2>&1
     rm -f JetBrainsMono.zip
-    if command -v fc-cache &> /dev/null; then
+
+    # Update font cache (Linux only)
+    if [[ "$OS" != "macos" ]] && command -v fc-cache &> /dev/null; then
         fc-cache -fv >/dev/null 2>&1
     fi
+
     print_success "JetBrainsMono Nerd Font installed"
 else
     print_warning "JetBrainsMono Nerd Font already installed"
@@ -128,18 +157,38 @@ mkdir -p "$HOME/.vim/undodir"
 print_step "Adding 'dev' alias to shell..."
 DEV_ALIAS='alias dev="~/.tmux/dev.sh"'
 
-if [[ -f "$HOME/.bashrc" ]] && ! grep -q "alias dev=" "$HOME/.bashrc"; then
-    echo "" >> "$HOME/.bashrc"
-    echo "# Dev environment alias" >> "$HOME/.bashrc"
-    echo "$DEV_ALIAS" >> "$HOME/.bashrc"
-    print_success "Added alias to .bashrc"
+# Handle .bashrc
+if [[ -f "$HOME/.bashrc" ]]; then
+    if ! grep -q "alias dev=" "$HOME/.bashrc"; then
+        echo "" >> "$HOME/.bashrc"
+        echo "# Dev environment alias" >> "$HOME/.bashrc"
+        echo "$DEV_ALIAS" >> "$HOME/.bashrc"
+        print_success "Added alias to .bashrc"
+    fi
 fi
 
-if [[ -f "$HOME/.zshrc" ]] && ! grep -q "alias dev=" "$HOME/.zshrc"; then
-    echo "" >> "$HOME/.zshrc"
-    echo "# Dev environment alias" >> "$HOME/.zshrc"
-    echo "$DEV_ALIAS" >> "$HOME/.zshrc"
-    print_success "Added alias to .zshrc"
+# Handle .zshrc (create if on macOS and doesn't exist)
+if [[ "$OS" == "macos" ]] && [[ ! -f "$HOME/.zshrc" ]]; then
+    touch "$HOME/.zshrc"
+fi
+
+if [[ -f "$HOME/.zshrc" ]]; then
+    if ! grep -q "alias dev=" "$HOME/.zshrc"; then
+        echo "" >> "$HOME/.zshrc"
+        echo "# Dev environment alias" >> "$HOME/.zshrc"
+        echo "$DEV_ALIAS" >> "$HOME/.zshrc"
+        print_success "Added alias to .zshrc"
+    fi
+fi
+
+# Handle .bash_profile for macOS
+if [[ "$OS" == "macos" ]] && [[ -f "$HOME/.bash_profile" ]]; then
+    if ! grep -q "alias dev=" "$HOME/.bash_profile"; then
+        echo "" >> "$HOME/.bash_profile"
+        echo "# Dev environment alias" >> "$HOME/.bash_profile"
+        echo "$DEV_ALIAS" >> "$HOME/.bash_profile"
+        print_success "Added alias to .bash_profile"
+    fi
 fi
 
 # Cleanup
@@ -154,14 +203,30 @@ echo ""
 echo -e "${BLUE}Next steps:${NC}"
 echo ""
 echo "  1. Set your terminal font to 'JetBrainsMono Nerd Font'"
+
+if [[ "$OS" == "macos" ]]; then
+echo "     - iTerm2: Preferences → Profiles → Text → Font"
+echo "     - Terminal.app: Preferences → Profiles → Font"
+echo "     - Warp: Settings → Appearance → Terminal font"
+else
+echo "     - GNOME Terminal: Preferences → Profile → Custom font"
+echo "     - Konsole: Settings → Edit Profile → Appearance → Font"
+fi
+
 echo ""
 echo "  2. Reload your shell:"
+if [[ "$OS" == "macos" ]]; then
+echo "     source ~/.zshrc"
+else
 echo "     source ~/.bashrc  # or source ~/.zshrc"
+fi
 echo ""
 echo "  3. Open Neovim to install plugins:"
 echo "     nvim"
+echo "     (wait for plugins to install, then restart nvim)"
 echo ""
 echo "  4. Install Tmux plugins (inside tmux):"
+echo "     tmux"
 echo "     Press: Ctrl+a then I (capital i)"
 echo ""
 echo "  5. Start a dev session:"
