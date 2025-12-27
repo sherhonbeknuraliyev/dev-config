@@ -49,8 +49,8 @@ keymap.set("n", "<C-Down>", ":resize +2<CR>", { desc = "Resize window down" })
 keymap.set("n", "<C-Left>", ":vertical resize -2<CR>", { desc = "Resize window left" })
 keymap.set("n", "<C-Right>", ":vertical resize +2<CR>", { desc = "Resize window right" })
 
--- File explorer
-keymap.set("n", "<leader>e", ":Explore<CR>", { desc = "Open file explorer" })
+-- File explorer (use nvim-tree)
+keymap.set("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle file explorer" })
 
 -- Save and quit
 keymap.set("n", "<leader>w", "<cmd>w<CR>", { desc = "Save file" })
