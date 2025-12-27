@@ -1,7 +1,6 @@
 -- Formatting
 return {
   "stevearc/conform.nvim",
-  version = "v4.*", -- Pin to v4 for Neovim 0.9 compatibility
   event = { "BufReadPre", "BufNewFile" },
   config = function()
     local conform = require("conform")

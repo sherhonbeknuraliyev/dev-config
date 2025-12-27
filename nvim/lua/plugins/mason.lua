@@ -1,9 +1,8 @@
 -- Mason for managing LSP servers, formatters, and linters
 return {
   "williamboman/mason.nvim",
-  version = "v1.10.0",
   dependencies = {
-    { "williamboman/mason-lspconfig.nvim", version = "v1.29.0" },
+    "williamboman/mason-lspconfig.nvim",
     "WhoIsSethDaniel/mason-tool-installer.nvim",
     "neovim/nvim-lspconfig",
   },
@@ -25,7 +24,7 @@ return {
     mason_lspconfig.setup({
       ensure_installed = {
         "lua_ls",
-        "ts_ls",
+        "tsserver",
         "html",
         "cssls",
         "tailwindcss",

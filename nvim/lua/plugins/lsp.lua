@@ -1,7 +1,6 @@
 -- LSP Configuration
 return {
   "neovim/nvim-lspconfig",
-  version = "v0.1.8",
   event = { "BufReadPre", "BufNewFile" },
   dependencies = {
     "hrsh7th/cmp-nvim-lsp",
@@ -130,7 +129,7 @@ return {
     })
 
     -- Configure TypeScript server
-    lspconfig["ts_ls"].setup({
+    lspconfig["tsserver"].setup({
       capabilities = capabilities,
       on_attach = on_attach,
       settings = {
